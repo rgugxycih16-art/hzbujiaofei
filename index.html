@@ -233,13 +233,13 @@
                         <div className="grid gap-3">
                             <TimeItem title="免疫组化 (IHC)" time="2 - 3 周" desc="快则两周，慢则三周左右。" />
                             <TimeItem title="荧光原位杂交 (FISH)" time="约 2 周" />
-                            <TimeItem title="分子病理/PCR/基因检测" time="约 1 个月" desc="组织/细胞荧光定量脱氧核糖核酸聚合酶链反应" />
+                            <TimeItem title="分子病理/基因检测" time="约 1 个月" desc="组织/细胞荧光定量脱氧核糖核酸聚合酶链反应" />
                         </div>
                     </Card>
                     <Card>
                         <h3 className="text-lg font-bold text-stone-800 mb-4 border-l-4 border-emerald-500 pl-3">常见疑问</h3>
-                        <FAQItem question="第一次是自费/医保，补缴费可以切换吗？">可以，在缴费窗口那里可以申请切换。</FAQItem>
-                        <FAQItem question="必须去病理科窗口取号才能补缴费吗？">不一定。可以先去自助机或二楼缴费窗口尝试，如果能刷出缴费项目直接缴；如果看不到项目，再去病理科排队。</FAQItem>
+                        <FAQItem question="第一次是自费/医保，补缴费可以切换吗？">可以，在窗口那里可以申请切换。</FAQItem>
+                        <FAQItem question="必须去病理科窗口取号才能补缴费吗？">不一定。可以先去病理科取号排队，然后去自助机或二楼缴费窗口尝试，如果能刷出缴费项目直接缴；如果看不到项目，再回病理科排队。</FAQItem>
                     </Card>
                 </div>
             );
@@ -259,8 +259,8 @@
                             <strong className="block text-stone-700 mb-2 flex items-center gap-2"><Icon name="Sparkles" className="w-4 h-4 text-orange-400" /> 领取物品说明</strong>
                             <ul className="space-y-2 text-stone-600 pl-1">
                                 <li className="flex items-start gap-2"><span className="text-emerald-500">✅</span><span>领取病理报告 + 原单位报告/切片。</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500">🔙</span><span><strong>退还：</strong>原单位染色切片（HE及IHC）、未使用完的白片。</span></li>
-                                <li className="flex items-start gap-2"><span className="text-stone-400">🔒</span><span><strong>不退还：</strong>已使用的白片、有损耗的蜡块。</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500">🔙</span><span><strong>退还：</strong>原单位染色切片（HE及IHC）、未使用的白片、蜡块(如使用可能会有损耗)。</span></li>
+                                <li className="flex items-start gap-2"><span className="text-stone-400">🔒</span><span><strong>不退还：</strong>已使用的白片。</span></li>
                             </ul>
                         </div>
                     </Card>
@@ -331,6 +331,41 @@
                 { id: 'predict', label: '等候预测', icon: 'Hourglass', ref: predictRef },
                 { id: 'mail', label: '邮寄攻略', icon: 'Package', ref: mailRef },
             ];
+
+            // [新增] 监听滚动，自动更新 Tab
+            useEffect(() => {
+                const handleScroll = () => {
+                    const scrollY = window.scrollY;
+                    // 150px 是大致的 Header 高度补偿
+                    const offset = 150; 
+                    
+                    // 检查是否滚动到底部
+                    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 20) {
+                        setActiveTab(tabs[tabs.length - 1].id);
+                        return;
+                    }
+
+                    // 寻找当前视口内的部分
+                    // 我们反向遍历，找到第一个满足 offsetTop <= scrollY + offset 的元素
+                    // 或者正向遍历，找最后一个满足条件的
+                    
+                    let currentSection = tabs[0].id; // 默认第一个
+
+                    for (const tab of tabs) {
+                        const element = tab.ref.current;
+                        if (element) {
+                            if (element.offsetTop - offset <= scrollY) {
+                                currentSection = tab.id;
+                            }
+                        }
+                    }
+
+                    setActiveTab(currentSection);
+                };
+
+                window.addEventListener('scroll', handleScroll);
+                return () => window.removeEventListener('scroll', handleScroll);
+            }, []); // 依赖项为空，因为 refs 是稳定的
 
             // [核心逻辑] 二维码生成 useEffect (含安卓补丁)
             useEffect(() => {
