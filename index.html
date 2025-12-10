@@ -17,6 +17,9 @@
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- QRCode.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
         /* 隐藏滚动条 */
@@ -32,6 +35,10 @@
         /* 弹窗动画 */
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .modal-animate { animation: fadeIn 0.2s ease-out forwards; }
+
+        /* 二维码修正样式 */
+        #qrcode canvas { display: none !important; }
+        #qrcode img { display: block !important; margin: 0 auto; max-width: 100%; height: auto; }
     </style>
 </head>
 <body>
@@ -244,8 +251,8 @@
                             <strong className="block text-stone-700 mb-2 flex items-center gap-2"><Icon name="Sparkles" className="w-4 h-4 text-orange-400" /> 领取物品说明</strong>
                             <ul className="space-y-2 text-stone-600 pl-1">
                                 <li className="flex items-start gap-2"><span className="text-emerald-500">✅</span><span>领取病理报告 + 原单位报告/切片。</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500">🔙</span><span><strong>退还：</strong>原单位染色切片（HE及IHC）、未使用的白片、蜡块(若使用可能会有损耗)。</span></li>
-                                <li className="flex items-start gap-2"><span className="text-stone-400">🔒</span><span><strong>不退还：</strong>已使用的白片。</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500">🔙</span><span><strong>退还：</strong>原单位染色切片（HE及IHC）、未使用完的白片。</span></li>
+                                <li className="flex items-start gap-2"><span className="text-stone-400">🔒</span><span><strong>不退还：</strong>已使用的白片、有损耗的蜡块。</span></li>
                             </ul>
                         </div>
                     </Card>
@@ -292,15 +299,13 @@
         function App() {
             const [activeTab, setActiveTab] = useState('payment');
             const [showQR, setShowQR] = useState(false);
-            
+            // 用于存储 QR 实例，防止重复生成 (React Ref 方式)
+            const qrInstanceRef = useRef(null);
+
             const paymentRef = useRef(null);
             const pickupRef = useRef(null);
             const predictRef = useRef(null);
             const mailRef = useRef(null);
-
-            const wechatLink = "https://u.wechat.com/EKcPjhL9GyGJtvlbGIc9Bbs";
-            // 使用 dark green color (064e3b) 保持原样
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=064e3b&margin=10&data=${encodeURIComponent(wechatLink)}`;
 
             const scrollToSection = (id, ref) => {
                 setActiveTab(id);
@@ -319,42 +324,61 @@
                 { id: 'mail', label: '邮寄攻略', icon: 'Package', ref: mailRef },
             ];
 
+            // [核心逻辑] 二维码生成 useEffect
+            // 每次页面加载时只初始化一次，后续 CSS 控制显示隐藏
+            useEffect(() => {
+                const qrContainer = document.getElementById("qrcode");
+                // 确保容器存在且未生成过
+                if (qrContainer && !qrInstanceRef.current) {
+                    qrContainer.innerHTML = ""; // 清空
+                    qrInstanceRef.current = new QRCode(qrContainer, {
+                        text: "https://u.wechat.com/EKcPjhL9GyGJtvlbGIc9Bbs",
+                        width: 200, 
+                        height: 200,
+                        // [颜色保持] 保持之前的深绿色，与页面风格统一
+                        colorDark : "#064e3b", 
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                }
+            }, []); // 空数组，仅挂载时执行一次
+
             return (
                 <div className="min-h-screen bg-[#FDFBF7] text-stone-700 font-sans pb-20 selection:bg-emerald-100">
                     
-                    {/* [新版] 微信弹窗 - 采用你提供的 HTML 结构 */}
-                    {showQR && (
+                    {/* [新版] 微信弹窗 */}
+                    <div 
+                        id="qrModal" 
+                        className={`fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-all duration-300 ${showQR ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                        onClick={() => setShowQR(false)}
+                    >
                         <div 
-                            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-all"
-                            onClick={() => setShowQR(false)}
+                            className={`bg-white rounded-2xl p-6 max-w-sm w-full relative shadow-2xl transform transition-all duration-300 ${showQR ? 'scale-100' : 'scale-95'}`}
+                            onClick={e => e.stopPropagation()}
                         >
-                            <div 
-                                className="bg-white rounded-2xl p-6 max-w-sm w-full relative shadow-2xl transform transition-all scale-100 modal-animate"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                {/* Close Button */}
-                                <button onclick="closeModal()" onClick={() => setShowQR(false)} className="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light focus:outline-none">&times;</button>
+                            <button onClick={() => setShowQR(false)} className="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light focus:outline-none">&times;</button>
+                            
+                            <div className="text-center mt-2">
+                                <h3 className="text-xl font-bold text-slate-800 mb-1">添加微信联系</h3>
+                                <p className="text-sm text-slate-500 mb-4">扫一扫下方二维码</p>
                                 
-                                <div className="text-center mt-2">
-                                    <h3 className="text-xl font-bold text-slate-800 mb-1">添加微信联系</h3>
-                                    <p className="text-sm text-slate-500 mb-4">扫一扫下方二维码</p>
-                                    
-                                    {/* QR Container */}
-                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 mb-4 flex justify-center items-center">
-                                        <img src={qrCodeUrl} alt="WeChat QR Code" className="w-[200px] h-[200px] mix-blend-multiply" />
-                                    </div>
-                                    
-                                    <div className="font-bold text-teal-700 text-lg">上海陪诊小河</div>
-                                    <div className="text-slate-500 text-sm">☎️ 17898872018</div>
+                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 mb-4 flex justify-center items-center">
+                                    <div id="qrcode"></div>
+                                </div>
+                                
+                                <div className="font-bold text-teal-700 text-lg">上海陪诊小河</div>
+                                <div className="text-slate-500 text-sm flex items-center justify-center gap-1 mt-1">
+                                    <Icon name="Phone" className="w-4 h-4" />
+                                    <span>17898872018</span>
                                 </div>
                             </div>
                         </div>
-                    )}
+                    </div>
 
                     {/* Header */}
                     <header className="bg-white shadow-sm sticky top-0 z-50">
                         <div className="px-5 py-4 flex justify-between items-center">
-                            {/* 左侧：极简纯文字，突出品牌和联系方式 */}
+                            {/* 左侧 */}
                             <div className="flex flex-col">
                                 <h1 className="text-stone-800 font-bold text-base leading-none tracking-tight">上海陪诊小河</h1>
                                 <div className="flex items-center gap-1 text-stone-400 text-xs mt-1.5 font-medium tracking-wide">
@@ -363,7 +387,7 @@
                                 </div>
                             </div>
 
-                            {/* [新版] 右侧：优化后的胶囊按钮 - 采用你提供的样式 */}
+                            {/* [新版] 右侧：样式完全对齐 */}
                             <button 
                                 onClick={() => setShowQR(true)}
                                 className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full transition-all text-xs md:text-sm font-bold shrink-0 cursor-pointer shadow-sm"
@@ -394,7 +418,7 @@
 
                     <main className="max-w-2xl mx-auto p-4 space-y-8 mt-2">
                         
-                        {/* 优化后的主标题 - 去除沉重的背景框，融入页面流 */}
+                        {/* 主标题 */}
                         <div className="px-2 pt-2 pb-0">
                             <h1 className="text-2xl font-bold text-emerald-900 tracking-tight mb-2 flex items-center gap-2">
                                 <Icon name="FileText" className="w-6 h-6 text-emerald-600" />
@@ -405,7 +429,7 @@
                             </p>
                         </div>
 
-                        {/* --- 受理时间 (已挪动到此处) --- */}
+                        {/* --- 受理时间 --- */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100/50">
                             <h3 className="font-bold text-emerald-800 mb-3 flex items-center gap-2 text-sm">
                                 <Icon name="Clock" className="w-4 h-4" /> 受理时间
