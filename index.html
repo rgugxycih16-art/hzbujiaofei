@@ -18,7 +18,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- QRCode.js 库 -->
+    <!-- 引入 QRCode.js 库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
@@ -34,9 +34,8 @@
 
         /* 弹窗动画 */
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .modal-animate { animation: fadeIn 0.2s ease-out forwards; }
-
-        /* 二维码修正样式 */
+        
+        /* --- 二维码显示修改样式：强制隐藏canvas，img，确保在移动端兼容性更好 --- */
         #qrcode canvas { display: none !important; }
         #qrcode img { display: block !important; margin: 0 auto; max-width: 100%; height: auto; }
     </style>
@@ -299,7 +298,6 @@
         function App() {
             const [activeTab, setActiveTab] = useState('payment');
             const [showQR, setShowQR] = useState(false);
-            // 用于存储 QR 实例，防止重复生成 (React Ref 方式)
             const qrInstanceRef = useRef(null);
 
             const paymentRef = useRef(null);
@@ -324,51 +322,53 @@
                 { id: 'mail', label: '邮寄攻略', icon: 'Package', ref: mailRef },
             ];
 
-            // [核心逻辑] 二维码生成 useEffect
-            // 每次页面加载时只初始化一次，后续 CSS 控制显示隐藏
+            // 核心逻辑：组件挂载后生成二维码
             useEffect(() => {
                 const qrContainer = document.getElementById("qrcode");
-                // 确保容器存在且未生成过
+                // 确认容器存在且之前未生成过
                 if (qrContainer && !qrInstanceRef.current) {
-                    qrContainer.innerHTML = ""; // 清空
+                    qrContainer.innerHTML = ""; // 防御性清空
                     qrInstanceRef.current = new QRCode(qrContainer, {
-                        text: "https://u.wechat.com/EKcPjhL9GyGJtvlbGIc9Bbs",
-                        width: 200, 
+                        text: "https://u.wechat.com/EKcPjhL9GyGJtvlbGIc9Bbs", // 微信链接
+                        width: 200,   
                         height: 200,
-                        // [颜色保持] 保持之前的深绿色，与页面风格统一
-                        colorDark : "#064e3b", 
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
+                        colorDark : "#064e3b", // 深绿色，健身主题
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
                     });
                 }
-            }, []); // 空数组，仅挂载时执行一次
+            }, []); // 空负载依赖，仅执行一次
 
             return (
                 <div className="min-h-screen bg-[#FDFBF7] text-stone-700 font-sans pb-20 selection:bg-emerald-100">
                     
-                    {/* [新版] 微信弹窗 */}
-                    <div 
-                        id="qrModal" 
+                    {/* 微信弹窗遮罩层 */}
+                    <div  
+                        id="qrModal"  
                         className={`fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-all duration-300 ${showQR ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-                        onClick={() => setShowQR(false)}
+                        onClick={() => setShowQR(false)} // 点击遮罩关闭
                     >
-                        <div 
+                        {/* 窗弹主体 */}
+                        <div  
                             className={`bg-white rounded-2xl p-6 max-w-sm w-full relative shadow-2xl transform transition-all duration-300 ${showQR ? 'scale-100' : 'scale-95'}`}
-                            onClick={e => e.stopPropagation()}
+                            onClick={e => e.stopPropagation()} // 阻止点击冒泡
                         >
+                            {/* 关闭按钮 (右上角 X) */}
                             <button onClick={() => setShowQR(false)} className="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light focus:outline-none">&times;</button>
-                            
+                           
                             <div className="text-center mt-2">
                                 <h3 className="text-xl font-bold text-slate-800 mb-1">添加微信联系</h3>
                                 <p className="text-sm text-slate-500 mb-4">扫一扫下方二维码</p>
-                                
+                                   
+                                {/* 二维码挂载容器：ID必须为qrcode */}
                                 <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 mb-4 flex justify-center items-center">
                                     <div id="qrcode"></div>
                                 </div>
-                                
+                                   
+                                {/* 底部文字信息 */}
                                 <div className="font-bold text-teal-700 text-lg">上海陪诊小河</div>
                                 <div className="text-slate-500 text-sm flex items-center justify-center gap-1 mt-1">
-                                    <Icon name="Phone" className="w-4 h-4" />
+                                    <Icon name="Phone" className="w-3 h-3" />
                                     <span>17898872018</span>
                                 </div>
                             </div>
@@ -387,7 +387,7 @@
                                 </div>
                             </div>
 
-                            {/* [新版] 右侧：样式完全对齐 */}
+                            {/* 右侧：样式完全对齐 */}
                             <button 
                                 onClick={() => setShowQR(true)}
                                 className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full transition-all text-xs md:text-sm font-bold shrink-0 cursor-pointer shadow-sm"
